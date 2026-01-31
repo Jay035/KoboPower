@@ -28,6 +28,7 @@ export async function POST(req: Request) {
   });
 
   const data = await res.json();
+  console.log(data);
 
   if (data.code !== "000") {
     return NextResponse.json(

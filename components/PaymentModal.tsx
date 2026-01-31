@@ -2,11 +2,13 @@
 
 import React, { useState } from "react";
 import { X, Loader2, CheckCircle } from "lucide-react";
+import { Disco } from "@/types";
 
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  serviceID: string;
+  disco: Disco;
+
 }
 
 function generateRequestId(): string {
@@ -32,13 +34,13 @@ function formatToken(token: string): string {
 export default function PaymentModal({
   isOpen,
   onClose,
-  serviceID,
+  disco,
 }: PaymentModalProps) {
   const [step, setStep] = useState<"verify" | "pay" | "success">("verify");
 
   const [meterNo, setMeterNo] = useState("");
   const [meterType, setMeterType] = useState("prepaid");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState<number | null>(null);
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
@@ -91,24 +93,74 @@ export default function PaymentModal({
   //   }
   // };
 
+  // const handleGetToken = async () => {
+  //   try {
+  //     const res = await fetch("/api/getToken", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //     });
+  //     const data = await res.json();
+  //     console.log(data);
+
+  //     if (!res.ok) throw new Error(data.message);
+  //     return data.token;
+  //   } catch (err: unknown) {
+  //     const errorMessage =
+  //       err instanceof Error ? err.message : "Token retrieval failed";
+  //     setError(errorMessage);
+  //     return null;
+  //   }
+  // };
+
+  // const handleGetBillers = async () => {
+  //   try {
+  //     const res = await fetch("/api/getBillers", {
+  //       method: "GET",
+  //       headers: { "Content-Type": "application/json" },
+  //     });
+  //     const data = await res.json();
+  //     console.log(data);
+  //     setLoading(false);
+
+  //     if (!res.ok) throw new Error(data.message);
+  //     return data.token;
+  //   } catch (err: unknown) {
+  //     const errorMessage =
+  //       err instanceof Error ? err.message : "Error fetching biller categories";
+  //     setError(errorMessage);
+  //     return null;
+  //   }
+  // };
+
   /* ---------------- VERIFY ---------------- */
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
+    // const billerCode = disco.billers[meterType as "prepaid" | "postpaid"];
+    // console.log(billerCode);
     try {
-      const res = await fetch("/api/verify", {
+      const res = await fetch("/api/vtpass/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ meterNo, serviceID, type: meterType }),
+        // body: JSON.stringify({
+        //   billerCode,
+        //   meterNo,
+        // }),
+        body: JSON.stringify({
+          meterNo,
+          serviceID: disco.serviceID,
+          type: meterType,
+        }),
       });
 
       const data = await res.json();
 
       if (!res.ok) throw new Error(data.message);
       if (data.data.WrongBillersCode === true) {
-        setError(data.data.error);
+        setError(`${data.data.error}. Confirm your meter number is accurate.`);
+        console.log(data.data);
         return;
       }
       console.log(data);
@@ -131,32 +183,43 @@ export default function PaymentModal({
     setError(null);
     const request_id = generateRequestId();
 
+    console.log(phone, email);
+
     try {
-      const res = await fetch("/api/pay", {
+      const res = await fetch("/api/vtpass/pay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          request_id: request_id,
-          serviceID,
+          request_id,
+          serviceID: disco.serviceID,
           billersCode: meterNo,
           variation_code: meterType,
           amount,
           phone,
-          email,
         }),
       });
 
       const result = await res.json();
-      if (!res.ok) throw new Error(result.message);
+      console.log(result);
+      if (!res.ok) {
+        setError("Invalid Inputs. Please check your entries and try again.");
+        // throw new Error(result.message);
+        return;
+      }
 
       const purchasedCode = result.data?.token;
 
       if (meterType.toLowerCase() === "prepaid" && !purchasedCode)
         throw new Error("Token not returned");
+      console.log(request_id);
+      const confirmed = handlePaymentConfirmation(request_id);
+      console.log(confirmed);
+      if (!confirmed)
+        throw new Error("Payment not confirmed. Please contact support.");
 
       setToken(purchasedCode);
-      setStep("success");
       setResponse(result.data?.response_description);
+      setStep("success");
       console.log(result.data);
     } catch (err: Error | unknown) {
       const errorMessage =
@@ -167,10 +230,27 @@ export default function PaymentModal({
     }
   };
 
+  const handlePaymentConfirmation = async (id: string) => {
+    const res = await fetch("/api/queryPaymentStatus", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        request_id: id,
+      }),
+    });
+
+    const data = await res.json();
+    const confirmed = data.data?.status.toLowerCase() === "delivered";
+
+    console.log(id);
+    console.log(res);
+    return { confirmed };
+  };
+
   const reset = () => {
     setStep("verify");
     setMeterNo("");
-    setAmount("");
+    setAmount(null);
     setPhone("");
     setEmail("");
     setToken("");
@@ -198,7 +278,10 @@ export default function PaymentModal({
                 <button
                   key={type}
                   type="button"
-                  onClick={() => setMeterType(type)}
+                  onClick={() => {
+                    setError(null);
+                    setMeterType(type);
+                  }}
                   className={`flex-1 py-2 text-sm font-semibold rounded-lg cursor-pointer transition-all
             ${
               meterType === type
@@ -219,12 +302,12 @@ export default function PaymentModal({
               placeholder="Meter Number"
               value={meterNo}
               onChange={(e) => setMeterNo(e.target.value)}
-              className="w-full p-3 rounded bg-gray-800 text-white"
+              className="w-full p-3 rounded bg-gray-800 text-white outline-none"
             />
 
             <button
-              disabled={loading}
-              className={`w-full bg-blue-600 py-3 rounded ${loading ? " cursor-not-allowed" : "cursor-pointer"}`}
+              disabled={loading || !meterNo}
+              className={`w-full bg-blue-600 py-3 rounded cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed`}
             >
               {loading ? (
                 <Loader2 className="animate-spin mx-auto" />
@@ -239,8 +322,11 @@ export default function PaymentModal({
           <form onSubmit={handlePay} className="space-y-4">
             <p className="text-green-400 font-bold">{customerName}</p>
 
+            {error && <p className="text-red-400 capitalize">{error}</p>}
+
             <input
               required
+              type="number"
               placeholder="Phone Number"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
@@ -261,19 +347,21 @@ export default function PaymentModal({
               placeholder="Amount"
               type="number"
               min={500}
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              value={amount || ""}
+              onChange={(e) =>
+                setAmount(e.target.value ? Number(e.target.value) : null)
+              }
               className="w-full p-3 rounded bg-gray-800 text-white"
             />
 
             <button
-              disabled={loading}
-              className={`w-full bg-green-600 py-3 rounded ${loading ? " cursor-not-allowed" : "cursor-pointer"}`}
+              disabled={loading || !amount}
+              className={`w-full bg-green-600 py-3 rounded cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed`}
             >
               {loading ? (
                 <Loader2 className="animate-spin mx-auto" />
               ) : (
-                `Pay ₦${amount}`
+                `Pay ₦${amount ?? 0}`
               )}
             </button>
           </form>

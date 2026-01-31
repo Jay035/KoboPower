@@ -10,7 +10,7 @@ export default function Navbar() {
               <Zap className="text-white" size={20} />
             </div>
             <span className="text-xl font-bold bg-linear-to-r from-white to-gray-400 bg-clip-text text-transparent">
-              Kobopay
+              Kobopower
             </span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-400">

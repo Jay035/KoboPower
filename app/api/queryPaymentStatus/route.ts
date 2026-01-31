@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
-  const { meterNo, serviceID, type } = await req.json();
+  const { request_id } = await req.json();
 
-  const res = await fetch(`${process.env.VTPASS_BASE_URL}/merchant-verify`, {
+  const res = await fetch(`${process.env.VTPASS_BASE_URL}/requery`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -11,13 +11,12 @@ export async function POST(req: Request) {
       "secret-key": process.env.VTPASS_SECRET_KEY!,
     },
     body: JSON.stringify({
-      billersCode: meterNo,
-      serviceID,
-      type,
+      request_id,
     }),
   });
 
   const data = await res.json();
+  console.log(data);
 
   if (data.code !== "000") {
     return NextResponse.json(

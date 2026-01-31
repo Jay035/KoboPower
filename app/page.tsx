@@ -13,17 +13,67 @@ import {
 } from "lucide-react";
 import PaymentModal from "@/components/PaymentModal";
 import Navbar from "@/components/Navbar";
+import Link from "next/link";
+import { DISCOS } from "@/lib/db";
 
-const DISCOS = [
-  { id: 1, name: "Aba Power", serviceID: "aba-electric", color: "bg-red-600" },
-  {
-    id: 2,
-    name: "PHEDC",
-    serviceID: "portharcourt-electric",
-    color: "bg-orange-500",
-  },
-  { id: 3, name: "EEDC", serviceID: "enugu-electric", color: "bg-green-600" },
-];
+// const billers = [
+//   {
+//     id: "eedc",
+//     name: "Enugu Electricity Distribution Company",
+//     billers: {
+//       prepaid: "biller-eedc-pre",
+//       postpaid: "biller-eedc-post",
+//     },
+//   },
+//   {
+//     id: "phedc",
+//     name: "Port Harcourt Electricity Distribution Company",
+//     billers: {
+//       prepaid: "biller-phedc-pre",
+//       postpaid: "biller-phedc-post",
+//     },
+//   },
+//   {
+//     id: "ekedc",
+//     name: "Eko Electricity Distribution Company",
+//     billers: {
+//       prepaid: "biller-ekedc-pre",
+//       postpaid: "biller-ekedc-post",
+//     },
+//   },
+//   // {
+//   //   id: "ekedc",
+//   //   code: "biller-ekedc-pre",
+//   //   name: "Eko Electricity Distribution Prepaid",
+//   // },
+
+//   // { code: "biller-ekedc-post", name: "Eko Electricity Distribution Postpaid" },
+
+//   // { code: "biller-ibedc-pre", name: "Ibadan Electricity Distribution Prepaid" },
+
+//   // {
+//   //   code: "biller-ibedc-post",
+//   //   name: "Ibadan Electricity Distribution Postpaid",
+//   // },
+
+//   // { code: "biller-ikedc-pre", name: "Ikeja Electricity Distribution Prepaid" },
+
+//   // {
+//   //   code: "biller-ikedc-post",
+//   //   name: "Ikeja Electricity Distribution Postpaid",
+//   // },
+
+//   // { code: "biller-jedc-pre", name: "Jos Electricity Distribution Prepaid" },
+
+//   // { code: "biller-jedc-post", name: "Jos Electricity Distribution Postpaid" },
+
+//   // { code: "biller-aedc-pre", name: "Abuja Electricity Distribution Prepaid" },
+
+//   // { code: "biller-aedc-post", name: "Abuja Electricity Distribution Postpaid" },
+
+//   // { code: "biller-kedc-pre", name: "Kano Electricity Distribution Prepaid" },
+//   // { code: "biller-knedc-pre", name: "Kaduna Electricity Distribution Prepaid" },
+// ];
 
 const BENEFITS = [
   {
@@ -58,9 +108,9 @@ const BENEFITS = [
   },
 ];
 
-// 2. DEFINE: Create a type for the selected provider
 type SelectedDisco = {
   name: string;
+  id: number;
   serviceID: string;
 };
 
@@ -131,23 +181,19 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {DISCOS.map((disco) => (
-              <div
+              <Link
+                href={`/pay/${disco.slug}`}
                 key={disco.id}
-                // 4. UPDATE CLICK: Set both name and serviceID
-                onClick={() =>
-                  setSelectedDisco({
-                    name: disco.name,
-                    serviceID: disco.serviceID,
-                  })
-                }
+                // onClick={() => setSelectedDisco(disco)}
                 className="group cursor-pointer relative bg-gray-900 border border-gray-800 rounded-2xl p-8 hover:border-blue-500/50 transition-all duration-300 hover:-translate-y-1"
               >
+                {/* ${disco.color} */}
                 <div
-                  className={`w-16 h-16 rounded-full ${disco.color} flex items-center justify-center mb-6 shadow-lg`}
+                  className={`${disco.color} w-16 h-16 rounded-full  flex items-center justify-center mb-6 shadow-lg`}
                 >
                   <Zap className="text-white" fill="currentColor" />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2">
+                <h3 className="text-2xl font-bold text-white mb-2 uppercase">
                   {disco.name}
                 </h3>
                 <p className="text-gray-500 text-sm mb-6">
@@ -159,7 +205,7 @@ export default function Home() {
                     →
                   </span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -283,7 +329,7 @@ export default function Home() {
         <PaymentModal
           isOpen={!!selectedDisco}
           onClose={() => setSelectedDisco(null)}
-          serviceID={selectedDisco.serviceID}
+          disco={selectedDisco}
         />
       )}
     </div>
